@@ -1,7 +1,7 @@
 using Test
 
 include("../src/GlacierFDM.jl")
-using .GlacierFDM: Grid, set!, grad_x
+using .GlacierFDM: Grid, set!, grad_x, grad_y
 
 @testset "Constructors" begin
     g = Grid((7, 5), (1, 1))
@@ -9,15 +9,21 @@ using .GlacierFDM: Grid, set!, grad_x
     @test size(g.data) == (5, 7)
     @test g.dx == 1
     
-    g2 = copy(g)
-    @test size(g.data) == (5, 7)
-    @test g.dx == 1
+    g2 = deepcopy(g)
+    @test size(g2.data) == (5, 7)
+    @test g2.dx == 1
+
+    g[1, 1] = 100
+    @test g2[1, 1] != g[1, 1] 
 
     set!(g, (x, y) -> x^2 + y)
     @test g.data[1, 3] == 10
     @test g[3, 1] == 10
-
+    
     xdiff = grad_x(g)
     @test xdiff[2, 1] == -4.0
+
+    ydiff = grad_y(g)
+    @test ydiff[1, 2] == -1
 
 end
