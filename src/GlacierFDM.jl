@@ -13,7 +13,7 @@ const R = 8.3145 # J mol^-1 K^-1
 const transition_temperature = 263 # K
 
 mutable struct Grid
-    shape::Tuple{UInt32, UInt32}
+    shape::Tuple{Int, Int}
     h::Tuple{Float32, Float32}
     dx::Float32 
     dy::Float32
@@ -51,21 +51,39 @@ end
 
 function grad_x(grid::Grid)::Grid
     output = deepcopy(grid)
+
     for xi = 2:grid.shape[1] - 1
         for xj = 1:grid.shape[2]
             output[xi, xj] = (1 / (2 * grid.dx)) * (grid[xi - 1, xj] - grid[xi + 1, xj])
         end
     end
+
+    lastx = grid.shape[1]
+
+    for xj = 1:grid.shape[2]
+        output[1, xj] = (1 / (2 * grid.dx)) * (grid[1, xj] - grid[2, xj])
+        output[lastx, xj] = (1 / (2 * grid.dx)) * (grid[lastx - 1, xj] - grid[lastx, xj])
+    end
+
     return output
 end
 
 function grad_y(grid::Grid)::Grid
     output = deepcopy(grid)
+
     for xi = 1:grid.shape[1]
         for xj = 2:grid.shape[2] - 1
             output[xi, xj] = (1 / (2 * grid.dy)) * (grid[xi, xj - 1] - grid[xi, xj + 1])
         end
     end
+
+    lasty = grid.shape[2]
+
+    for xi = 1:grid.shape[1]
+        output[xi, 1] = (1 / (2 * grid.dy)) * (grid[xi, 1] - grid[xi, 2])
+        output[xi, lasty] = (1 / (2 * grid.dy)) * (grid[xi, lasty - 1] - grid[xi, lasty])
+    end
+
     return output
 end
 
@@ -121,6 +139,41 @@ function calculate_eta(strain::Grid, temperature::Grid, H::Grid)::Grid
     eta = deepcopy(H)
     eta.data = (1 / 2) .* B_array.data .* (strain_norm .^ ((1 - n) / n))
     return eta
+end
+
+function guess_velocity(initial_u::Grid, initial_v::Grid, eta::Grid, H::Grid)::Tuple{Grid, Grid}
+    # notation: Lu = f
+    # currently only implemented for h = 1
+    nx = H.shape[1]
+    ny = H.shape[2]
+    nn = 2 * (nx * ny)
+
+    U = deepcopy(initial_u)
+    V = deepcopy(initial_v)
+
+    Sx = grad_x(H)
+    Sy = grad_y(H)
+    fx = (rho * g) .* Sx.data
+    fy = (rho * g) .* Sy.data
+    f = vcat(reshape(fx, :, 1), reshape(fy, :, 1))
+
+    etax = grad_x(eta)
+    etay = grad_y(eta)
+
+    L = Array{Float64}(undef, nn, nn)
+    
+    # Sx component
+    # for x = 2:nx - 1
+        # for y = 2:ny - 1
+            
+            
+            
+
+    # result = L \ f
+    # U = result[1:nn]
+    # V = result[nn+1:end]
+
+    return U, V
 end
 
 end

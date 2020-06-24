@@ -2,7 +2,7 @@ using Test
 
 include("../src/GlacierFDM.jl")
 using .GlacierFDM: Grid, set!, fill_zeros!, grad_x, grad_y,
-    calculate_strain, B, calculate_eta
+    calculate_strain, B, calculate_eta, guess_velocity
 
 @testset "Constructors" begin
     g = Grid((7, 5), (1, 1))
@@ -28,9 +28,11 @@ end
 
     xdiff = grad_x(g)
     @test xdiff[2, 1] == -4.0
+    @test xdiff[1, 4] == -1.5
 
     ydiff = grad_y(g)
     @test ydiff[1, 2] == -1
+    @test ydiff[3, 1] == -0.5
 end
 
 @testset "Effective viscosity" begin
@@ -44,8 +46,6 @@ end
     @test epsilon[2, 2] == -2.0
     @test epsilon[2, 2] == epsilon[2, 3]
     @test epsilon[2, 2] == epsilon[3, 2]
-    fill_zeros!(epsilon)
-    epsilon
 
     T = Grid((4, 4), (1, 1))
     set!(T, (x, y) -> 265 + y + x)
@@ -55,4 +55,20 @@ end
 
     Btest = B(T, H)
     eta = calculate_eta(epsilon, T, H)
+end
+
+@testset "Velocity snapshot" begin
+    u0 = Grid((4, 4), (1, 1))
+    v0 = Grid((4, 4), (1, 1))
+    T = Grid((4, 4), (1, 1))
+    H = Grid((4, 4), (1, 1))
+
+    set!(u0, (x, y) -> x)
+    set!(v0, (x, y) -> 1e-2 * x)
+    set!(T, (x, y) -> 263 + y + x)
+    set!(H, (x, y) -> 1e3 - 2 * x)
+    
+    epsilon = calculate_strain(u0, v0)
+    eta = calculate_eta(epsilon, T, H)
+    u, v = guess_velocity(u0, v0, eta, H)
 end
