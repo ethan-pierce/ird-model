@@ -147,6 +147,8 @@ function guess_velocity(initial_u::Grid, initial_v::Grid, eta::Grid, H::Grid)::T
     nx = H.shape[1]
     ny = H.shape[2]
     nn = 2 * (nx * ny)
+    dx = H.dx
+    dy = H.dy
 
     U = deepcopy(initial_u)
     V = deepcopy(initial_v)
@@ -160,18 +162,135 @@ function guess_velocity(initial_u::Grid, initial_v::Grid, eta::Grid, H::Grid)::T
     etax = grad_x(eta)
     etay = grad_y(eta)
 
-    L = Array{Float64}(undef, nn, nn)
+    L = Array{Float64}(undef, nn, nn) # use row, col indexing
     
     # Sx component
-    # for x = 2:nx - 1
-        # for y = 2:ny - 1
-            
-            
-            
+    for x = 2:nx - 1
+        for y = 2:ny - 1
+            row = (x - 1) * ny + y
+            ucol = row
+            vcol = row + (nx * ny)
 
-    # result = L \ f
-    # U = result[1:nn]
-    # V = result[nn+1:end]
+            Eta = eta[x, y]
+            Xeta = etax[x, y]
+            Yeta = etay[x, y]
+
+            # u(x, y)
+            L[row, ucol] = (-8 * Eta) / dx^2 - (2 * Eta) / dy^2
+
+            # u(x - 1, y)
+            L[row, ucol - ny] = (-2 * Xeta) / dx + (4 * Eta) / dx^2
+
+            # u(x + 1, y)
+            L[row, ucol + ny] = (2 * Xeta) / dx + (4 * Eta) / dx^2
+
+            # u(x, y - 1)
+            L[row, ucol - 1] = Eta / dy^2 - Yeta / (2 * dy)
+
+            # u(x, y + 1)
+            L[row, ucol + 1] = Eta / dy^2 + Yeta / (2 * dy)
+
+            # v(x, y - 1)
+            L[row, vcol - 1] = -Xeta / dy
+
+            # v(x, y + 1)
+            L[row, vcol + 1] = Xeta / dy
+
+            # v(x - 1, y)
+            L[row, vcol - ny] = -Yeta / (2 * dx)
+
+            # v(x + 1, y)
+            L[row, vcol + ny] = Yeta / (2 * dx)
+
+            # v(x - 1, y - 1)
+            L[row, vcol - ny - 1] = Eta / (2 * dx * dy) + Eta / (4 * dx * dy)
+
+            # v(x - 1, y + 1)
+            L[row, vcol - ny + 1] = -Eta / (2 * dx * dy) - Eta / (4 * dx * dy)
+
+            # v(x + 1, y - 1)
+            L[row, vcol + ny - 1] = -Eta / (2 * dx * dy) - Eta / (4 * dx * dy)
+
+            # v(x + 1, y + 1)
+            L[row, vcol + ny + 1] = Eta / (2 * dx * dy) + Eta / (4 * dx * dy)
+        end
+    end
+
+    # Sy component
+    for x = 2:nx - 1
+        for y = 2:ny - 1
+            row = (nx * ny) + (x - 1) * ny + y
+            ucol = row - (nx * ny)
+            vcol = row
+
+            Eta = eta[x, y]
+            Xeta = etax[x, y]
+            Yeta = etay[x, y]
+
+            # v(x, y)
+            L[row, vcol] = (-8 * Eta) / dy^2 - (2 * Eta) / dx^2
+
+            # v(x, y - 1)
+            L[row, vcol - 1] = (-2 * Yeta) / dy + (4 * Eta) / dy^2
+
+            # v(x, y + 1)
+            L[row, vcol + 1] = (2 * Yeta) / dy + (4 * Eta) / dy^2
+
+            # v(x - 1, y)
+            L[row, vcol - ny] = Eta / dx^2 - Xeta / (2 * dx)
+
+            # v(x + 1, y)
+            L[row, vcol + ny] = Eta / dx^2 + Xeta / (2 * dx)
+
+            # u(x - 1, y)
+            L[row, ucol - ny] = -Yeta / dx
+
+            # u(x + 1, y)
+            L[row, ucol + ny] = Yeta / dx
+
+            # u(x, y - 1)
+            L[row, ucol - 1] = -Xeta / (2 * dy)
+
+            # u(x, y + 1)
+            L[row, ucol + 1] = Xeta / (2 * dy)
+
+            # u(x - 1, y - 1)
+            L[row, ucol - ny - 1] = Eta / (2 * dx * dy) + Eta / (4 * dx * dy)
+
+            # u(x + 1, y - 1)
+            L[row, ucol + ny - 1] = -Eta / (2 * dx * dy) - Eta / (4 * dx * dy)
+
+            # u(x - 1, y + 1)
+            L[row, ucol - ny + 1] = -Eta / (2 * dx * dy) - Eta / (4 * dx * dy)
+
+            # u(x + 1, y + 1)
+            L[row, ucol + ny + 1] = Eta / (2 * dx * dy) + Eta / (4 * dx * dy)
+        end
+    end
+
+    # boundary @ x = 1
+    for y = 1:ny
+        nothing
+    end
+
+    # boundary @ x = nx
+    for y = 1:ny
+        nothing
+    end
+
+    # boundary @ y = 1
+    for x = 1:nx
+        nothing
+    end
+
+    # boundary @ y = ny
+    for x = 1:nx
+        nothing
+    end
+
+    result = L \ f
+    U.data[:] = reshape(result[1:(nx*ny)], nx, ny)
+    V.data[:] = reshape(result[(nx*ny)+1:end], nx, ny)
 
     return U, V
 end

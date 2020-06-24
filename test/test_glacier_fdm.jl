@@ -71,4 +71,5 @@ end
     epsilon = calculate_strain(u0, v0)
     eta = calculate_eta(epsilon, T, H)
     u, v = guess_velocity(u0, v0, eta, H)
+    println(u)
 end
